@@ -3,7 +3,7 @@ package burkemw3.tdameritradenetprofit;
 import org.joda.time.DateTime;
 
 class Position {
-    public Position(String symbol, DateTime date, long investment, long quantity, long cost) {
+    public Position(String symbol, DateTime date, long investment, long quantity, long fees) {
         if (investment <= 0) {
             throw new IllegalArgumentException();
         }
@@ -12,35 +12,35 @@ class Position {
         }
 
         _symbol = symbol;
-        _cost = cost;
+        _fees = fees;
         _initialOpen = date;
         _investment = investment;
         _quantity = quantity;
     }
 
-    public void addTo(long investment, long quantity, long cost) {
+    public void addTo(long investment, long quantity, long fees) {
         if (investment < 0) {
             throw new IllegalArgumentException();
         }
         if (quantity <= 0) {
             throw new IllegalArgumentException();
         }
-        if (cost < 0) {
+        if (fees < 0) {
             throw new IllegalArgumentException();
         }
         _investment += investment;
         _quantity += quantity;
-        _cost += cost;
+        _fees += fees;
     }
 
-    public void addEarnings(long earnings) {
-        if (earnings <= 0) {
+    public void addDividends(long dividends) {
+        if (dividends <= 0) {
             throw new IllegalArgumentException();
         }
-        _earnings += earnings;
+        _dividends += dividends;
     }
 
-    public void sell(long proceeds, long quantity, DateTime date, long cost) {
+    public void sell(long proceeds, long quantity, DateTime date, long fees) {
         if (proceeds <= 0) {
             throw new IllegalArgumentException();
         }
@@ -51,12 +51,12 @@ class Position {
         if (newQuantity < 0) {
             throw new IllegalStateException();
         }
-        if (cost < 0) {
+        if (fees < 0) {
             throw new IllegalArgumentException();
         }
         _quantity = newQuantity;
         _proceeds += proceeds;
-        _cost += cost;
+        _fees += fees;
 
         if (_quantity == 0) {
             _finalClose = date;
@@ -91,12 +91,12 @@ class Position {
         return _currentValue;
     }
 
-    public long getEarnings() {
-        return _earnings;
+    public long getDividends() {
+        return _dividends;
     }
 
-    public long getCost() {
-        return _cost;
+    public long getFees() {
+        return _fees;
     }
 
     public long getProceeds() {
@@ -104,16 +104,22 @@ class Position {
     }
 
     public long getNetProfit() {
-        return _currentValue + _earnings + _proceeds - _investment - _cost;
+        return _currentValue + _dividends + _proceeds - _investment - _fees;
+    }
+
+    public float getReturnOnInvestment() {
+        long gain = _currentValue + _dividends + _proceeds;
+        long cost = _investment + _fees;
+        return ((float)gain - (float)cost) / (float)cost * 100;
     }
 
     private String _symbol;
     private DateTime _initialOpen;
     private DateTime _finalClose;
-    private long _cost;
+    private long _fees;
     private long _investment;
     private long _quantity;
-    private long _earnings;
+    private long _dividends;
     private long _proceeds;
     private long _currentValue;
 }

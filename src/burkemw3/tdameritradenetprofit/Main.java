@@ -48,43 +48,55 @@ public class Main {
 
     private static void output(Positions positions) {
         int netProfit = 0;
-        int earnings = 0;
+        int dividends = 0;
         int cost = 0;
-        System.out.println("symbol, initial open date, investment, earnings, proceeds, current value, cost, net profit, final close date");
+        System.out.print("symbol, ");
+        System.out.print("initial open date, ");
+        System.out.print("investment, ");
+        System.out.print("dividends, ");
+        System.out.print("proceeds, ");
+        System.out.print("current value, ");
+        System.out.print("cost, ");
+        System.out.print("net profit, ");
+        System.out.print("final close date, ");
+        System.out.print("ROI");
+        System.out.println();
         for (Position position : positions.getClosedPositions()) {
             System.out.print(position.getSymbol() + ",");
             System.out.print(position.getInitialOpen().toString(_mmddyyyyDateFormat) + ",");
             System.out.print(((float)position.getInvestment())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getEarnings())/CURRENCY_FACTOR + ",");
+            System.out.print(((float)position.getDividends())/CURRENCY_FACTOR + ",");
             System.out.print(((float)position.getProceeds())/CURRENCY_FACTOR + ",");
             System.out.print("0,");
-            System.out.print(((float)position.getCost())/CURRENCY_FACTOR + ",");
+            System.out.print(((float)position.getFees())/CURRENCY_FACTOR + ",");
             System.out.print(((float)position.getNetProfit())/CURRENCY_FACTOR + ",");
-            System.out.print(position.getFinalClose().toString(_mmddyyyyDateFormat));
+            System.out.print(position.getFinalClose().toString(_mmddyyyyDateFormat) + ",");
+            System.out.printf("%.2f%%", position.getReturnOnInvestment());
             System.out.println();
             netProfit += position.getNetProfit();
-            earnings += position.getEarnings();
-            cost += position.getCost();
+            dividends += position.getDividends();
+            cost += position.getFees();
         }
         for (Position position : positions.getOpenPositions()) {
             System.out.print(position.getSymbol() + ",");
             System.out.print(position.getInitialOpen().toString(_mmddyyyyDateFormat) + ",");
             System.out.print(((float)position.getInvestment())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getEarnings())/CURRENCY_FACTOR + ",");
+            System.out.print(((float)position.getDividends())/CURRENCY_FACTOR + ",");
             System.out.print(((float)position.getProceeds())/CURRENCY_FACTOR + ",");
             System.out.print(((float)position.getCurrentValue())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getCost())/CURRENCY_FACTOR + ",");
+            System.out.print(((float)position.getFees())/CURRENCY_FACTOR + ",");
             System.out.print(((float)position.getNetProfit())/CURRENCY_FACTOR + ",");
+            System.out.printf("%.2f%%", position.getReturnOnInvestment());
             System.out.println();
             netProfit += position.getNetProfit();
-            earnings += position.getEarnings();
-            cost += position.getCost();
+            dividends += position.getDividends();
+            cost += position.getFees();
         }
 
         System.out.print("TOTALS,");
         System.out.print(",");
         System.out.print(",");
-        System.out.print(((float)earnings)/CURRENCY_FACTOR + ",");
+        System.out.print(((float)dividends)/CURRENCY_FACTOR + ",");
         System.out.print(",");
         System.out.print(",");
         System.out.print(((float)cost)/CURRENCY_FACTOR + ",");
@@ -113,17 +125,17 @@ public class Main {
                         continue;
                     }
                     foundDrip = true;
-                    positions.addToPosition(tx.getSymbol(), tx.getDate(), 0, otherTx.getQuantity(), otherTx.getCost());
+                    positions.addToPosition(tx.getSymbol(), tx.getDate(), 0, otherTx.getQuantity(), otherTx.getFees());
                     transactions.remove(j);
                     break;
                 }
                 if (false == foundDrip) {
-                    positions.addEarnings(tx.getSymbol(), tx.getAmount());
+                    positions.addDividends(tx.getSymbol(), tx.getAmount());
                 }
             } else if (true == tx.isBuy()) {
-                positions.addToPosition(tx.getSymbol(), tx.getDate(), (-1)*tx.getAmount(), tx.getQuantity(), tx.getCost());
+                positions.addToPosition(tx.getSymbol(), tx.getDate(), (-1)*tx.getAmount(), tx.getQuantity(), tx.getFees());
             } else {
-                positions.sellPosition(tx.getSymbol(), tx.getDate(), tx.getAmount(), tx.getQuantity(), tx.getCost());
+                positions.sellPosition(tx.getSymbol(), tx.getDate(), tx.getAmount(), tx.getQuantity(), tx.getFees());
             }
         }
         return positions;
@@ -167,10 +179,10 @@ public class Main {
                     price = (long) (Float.parseFloat(priceString) * CURRENCY_FACTOR);
                 }
 
-                String costString = csv.get(6);
-                long cost = 0;
-                if (false == costString.isEmpty()) {
-                    cost = (long) (Float.parseFloat(costString) * CURRENCY_FACTOR);
+                String feesString = csv.get(6);
+                long fees = 0;
+                if (false == feesString.isEmpty()) {
+                    fees = (long) (Float.parseFloat(feesString) * CURRENCY_FACTOR);
                 }
 
                 String amountString = csv.get(7);
@@ -180,7 +192,7 @@ public class Main {
                 }
 
                 Transaction transaction = new Transaction(date, transactionId, description,
-                        quantity, symbol, price, cost, amount);
+                        quantity, symbol, price, fees, amount);
                 transactions.add(transaction);
             }
         }

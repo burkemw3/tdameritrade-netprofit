@@ -14,17 +14,17 @@ class Positions {
     private Map<String, Position> _openPositions = new TreeMap<String, Position>();
     private List<Position> _closedPositions = new ArrayList<Position>();
 
-    public void addToPosition(String symbol, DateTime date, long investment, Long quantity, long cost) {
+    public void addToPosition(String symbol, DateTime date, long investment, Long quantity, long fees) {
         Position position = _openPositions.get(symbol);
         if (position == null) {
-            position = new Position(symbol, date, investment, quantity, cost);
+            position = new Position(symbol, date, investment, quantity, fees);
             _openPositions.put(symbol, position);
         } else {
-            position.addTo(investment, quantity, cost);
+            position.addTo(investment, quantity, fees);
         }
     }
 
-    public void addEarnings(String symbol, long earnings) {
+    public void addDividends(String symbol, long dividends) {
         Position position = _openPositions.get(symbol);
         if (null == position) {
             for (Position p : _closedPositions) {
@@ -33,15 +33,15 @@ class Positions {
                 }
             }
         }
-        position.addEarnings(earnings);
+        position.addDividends(dividends);
     }
 
-    public void sellPosition(String symbol, DateTime date, long proceeds, long quantity, long cost) {
+    public void sellPosition(String symbol, DateTime date, long proceeds, long quantity, long fees) {
         Position position = _openPositions.get(symbol);
         if (position == null) {
             throw new IllegalStateException("closing an unopened position for: " + symbol);
         }
-        position.sell(proceeds, quantity, date, cost);
+        position.sell(proceeds, quantity, date, fees);
         if (false == position.isOpen()) {
             _closedPositions.add(position);
             _openPositions.remove(symbol);

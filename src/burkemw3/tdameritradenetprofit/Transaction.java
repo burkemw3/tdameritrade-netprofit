@@ -9,18 +9,18 @@ class Transaction implements Comparable<Transaction> {
     Long _quantity;
     String _symbol;
     Long _price;
-    long _cost;
+    long _fees;
     long _amount;
 
     public Transaction(DateTime date, String transactionId, String description, Long quantity,
-            String symbol, Long price, long cost, long amount) {
+            String symbol, Long price, long fees, long amount) {
         _date = date;
         _transactionId = transactionId;
         _description = description;
         _quantity = quantity;
         _symbol = symbol;
         _price = price;
-        _cost = cost;
+        _fees = fees;
         _amount = amount;
     }
 
@@ -60,7 +60,7 @@ class Transaction implements Comparable<Transaction> {
         return _quantity;
     }
 
-    public long getCost() {
-        return _cost;
+    public long getFees() {
+        return _fees;
     }
 }
