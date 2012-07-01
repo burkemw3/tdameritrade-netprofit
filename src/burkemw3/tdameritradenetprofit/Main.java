@@ -11,6 +11,12 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.DateTimeFormatterBuilder;
@@ -30,78 +36,182 @@ public class Main {
             .appendYear(4, 4)
             .toFormatter();
 
-    public static void main(String[] args) {
+    private static class CliOptions {
+        static Option OUTPUT_FORMAT = new Option("o", "output-format", true, "text or csv");
+    }
+
+    private static enum OutputType {
+        TEXT,
+        CSV
+    }
+
+    public static void main(String[] arguments) {
+        Options options = new Options();
+        options.addOption(CliOptions.OUTPUT_FORMAT);
+
+        CommandLineParser parser = new GnuParser();
         try {
-            if (args.length != 1) {
-                throw new IllegalArgumentException("I expect 1 argument, the path to a folder with transactions");
+            CommandLine line = parser.parse(options, arguments);
+
+            String[] remainingArguments = line.getArgs();
+            if (remainingArguments.length != 1) {
+                throw new ParseException("Expecting path to directory with transactions");
             }
 
-            List<Transaction> transactions = readTransactionFiles(args[0]);
+            OutputType outputType = OutputType.TEXT;
+            if (true == line.hasOption(CliOptions.OUTPUT_FORMAT.getOpt())) {
+                String optionValue = line.getOptionValue(CliOptions.OUTPUT_FORMAT.getOpt());
+                if ("text".equals(optionValue)) {
+                    outputType = OutputType.TEXT;
+                } else if ("csv".equals(optionValue)) {
+                    outputType = OutputType.CSV;
+                } else {
+                    throw new ParseException("output format can only be text or csv");
+                }
+            }
+
+            List<Transaction> transactions = readTransactionFiles(remainingArguments[0]);
             Collections.sort(transactions);
             Positions positions = processTransactions(transactions);
             updateCurrentPrices(positions);
-            output(positions);
+            output(positions, outputType);
+        } catch (ParseException exp) {
+            System.err.println("Parsing failed. Reason: " + exp.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void output(Positions positions) {
+    private static final String csvOutputFormat = "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n";
+    private static final String textOutputFormat = "%6s %10s %10s %10s %10s %10s %8s %10s %10s %9s\n";
+    private static final String dollarFormat = "%.2f";
+    private static void output(Positions positions, OutputType outputType) {
         int netProfit = 0;
         int dividends = 0;
         int cost = 0;
-        System.out.print("symbol, ");
-        System.out.print("initial open date, ");
-        System.out.print("investment, ");
-        System.out.print("dividends, ");
-        System.out.print("proceeds, ");
-        System.out.print("current value, ");
-        System.out.print("cost, ");
-        System.out.print("net profit, ");
-        System.out.print("final close date, ");
-        System.out.print("ROI");
-        System.out.println();
+
+        if (OutputType.CSV == outputType) {
+            System.out.printf(csvOutputFormat,
+                    "SYMBOL",
+                    "INITIAL OPEN DATE",
+                    "INVESTMENT",
+                    "DIVIDENDS",
+                    "PROCEEDS",
+                    "CURRENT VALUE",
+                    "COST",
+                    "NET PROFIT",
+                    "FINAL CLOSE DATE",
+                    "ROI");
+        } else if (OutputType.TEXT == outputType) {
+            System.out.printf(textOutputFormat,
+                    "",
+                    "INITIAL",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "FINAL",
+                    "");
+            System.out.printf(textOutputFormat,
+                    "",
+                    "OPEN",
+                    "",
+                    "",
+                    "",
+                    "CURRENT",
+                    "",
+                    "NET",
+                    "CLOSE",
+                    "");
+            System.out.printf(textOutputFormat,
+                    "SYMBOL",
+                    "DATE",
+                    "INVESTMENT",
+                    "DIVIDENDS",
+                    "PROCEEDS",
+                    "VALUE",
+                    "COST",
+                    "PROFIT",
+                    "DATE",
+                    "ROI");
+            System.out.printf(textOutputFormat,
+                    "------",
+                    "----------",
+                    "----------",
+                    "----------",
+                    "----------",
+                    "----------",
+                    "--------",
+                    "----------",
+                    "----------",
+                    "---------");
+        }
+
         for (Position position : positions.getClosedPositions()) {
-            System.out.print(position.getSymbol() + ",");
-            System.out.print(position.getInitialOpen().toString(_mmddyyyyDateFormat) + ",");
-            System.out.print(((float)position.getInvestment())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getDividends())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getProceeds())/CURRENCY_FACTOR + ",");
-            System.out.print("0,");
-            System.out.print(((float)position.getFees())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getNetProfit())/CURRENCY_FACTOR + ",");
-            System.out.print(position.getFinalClose().toString(_mmddyyyyDateFormat) + ",");
-            System.out.printf("%.2f%%", position.getReturnOnInvestment());
-            System.out.println();
+            output(outputType, position);
+
             netProfit += position.getNetProfit();
             dividends += position.getDividends();
             cost += position.getFees();
         }
         for (Position position : positions.getOpenPositions()) {
-            System.out.print(position.getSymbol() + ",");
-            System.out.print(position.getInitialOpen().toString(_mmddyyyyDateFormat) + ",");
-            System.out.print(((float)position.getInvestment())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getDividends())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getProceeds())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getCurrentValue())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getFees())/CURRENCY_FACTOR + ",");
-            System.out.print(((float)position.getNetProfit())/CURRENCY_FACTOR + ",");
-            System.out.printf("%.2f%%", position.getReturnOnInvestment());
-            System.out.println();
+            output(outputType, position);
+
             netProfit += position.getNetProfit();
             dividends += position.getDividends();
             cost += position.getFees();
         }
 
-        System.out.print("TOTALS,");
-        System.out.print(",");
-        System.out.print(",");
-        System.out.print(((float)dividends)/CURRENCY_FACTOR + ",");
-        System.out.print(",");
-        System.out.print(",");
-        System.out.print(((float)cost)/CURRENCY_FACTOR + ",");
-        System.out.print(((float)netProfit)/CURRENCY_FACTOR + ",");
-        System.out.println();
+        if (OutputType.TEXT == outputType) {
+            System.out.println();
+        }
+
+        output(outputType,
+                "TOTALS",
+                "",
+                "",
+                String.format(dollarFormat, ((float)dividends)/CURRENCY_FACTOR),
+                "",
+                "",
+                String.format(dollarFormat, ((float)cost)/CURRENCY_FACTOR),
+                String.format(dollarFormat, ((float)netProfit)/CURRENCY_FACTOR),
+                "",
+                ""
+                );
+    }
+
+    public static void output(OutputType outputType, Position position) {
+        DateTime close = position.getFinalClose();
+        String closeText = "";
+        if (null != close) {
+            closeText = close.toString(_mmddyyyyDateFormat);
+        }
+
+        output(outputType,
+                position.getSymbol(),
+                position.getInitialOpen().toString(_mmddyyyyDateFormat),
+                String.format(dollarFormat, ((float) position.getInvestment()) / CURRENCY_FACTOR),
+                String.format(dollarFormat, ((float) position.getDividends()) / CURRENCY_FACTOR),
+                String.format(dollarFormat, ((float) position.getProceeds()) / CURRENCY_FACTOR),
+                String.format(dollarFormat, ((float) position.getCurrentValue()) / CURRENCY_FACTOR),
+                String.format(dollarFormat, ((float) position.getFees()) / CURRENCY_FACTOR),
+                String.format(dollarFormat, ((float) position.getNetProfit()) / CURRENCY_FACTOR),
+                closeText,
+                String.format("%.2f%%", position.getReturnOnInvestment())
+                );
+    }
+
+    private static void output(OutputType type, Object... args) {
+        switch(type) {
+        case CSV:
+            System.out.printf(csvOutputFormat, args);
+            break;
+        case TEXT:
+            System.out.printf(textOutputFormat, args);
+            break;
+        }
     }
 
     private static Positions processTransactions(List<Transaction> transactions) {
